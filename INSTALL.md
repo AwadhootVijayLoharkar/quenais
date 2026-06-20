@@ -4,7 +4,7 @@
 
 ### Step 1 — Create conda environment (handles all system deps)
 
-    mamba env create -f environment.yml
+    mamba env create -f environment.yml -p ./quenais-env
     mamba activate quenais
 
 This installs Python 3.11, clang, cmake, openblas, gfortran, Rust,
