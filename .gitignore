@@ -1,5 +1,4 @@
 quenais-env/
-quenais-env/
 *.egg-info/
 __pycache__/
 *.pyc
