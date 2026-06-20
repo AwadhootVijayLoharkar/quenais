@@ -3,13 +3,22 @@ set -e
 
 echo "=== QuEnAIS Installation ==="
 
+# ── Recommended: create environment from environment.yml first ────────────────
+# mamba env create -f environment.yml
+# mamba activate quenais
+# Then run this script.
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ── Check system requirements ─────────────────────────────────────────────────
 echo "[0/6] Checking system requirements..."
 
 command -v python || { echo "ERROR: python not found"; exit 1; }
 command -v pip    || { echo "ERROR: pip not found"; exit 1; }
 command -v git    || { echo "ERROR: git not found"; exit 1; }
-command -v cargo  || { echo "ERROR: cargo not found. Install Rust: https://rustup.rs"; exit 1; }
+command -v cargo  || { echo "ERROR: cargo (Rust) not found."; \
+                       echo "  Fix option 1: mamba install -c conda-forge rust"; \
+                       echo "  Fix option 2: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"; \
+                       exit 1; }
 command -v clang  || { echo "ERROR: clang not found."; \
                        echo "  Fix: mamba install -c conda-forge clang"; \
                        echo "  OR:  conda install -c conda-forge clang"; \

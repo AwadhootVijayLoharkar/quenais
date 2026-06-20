@@ -1,0 +1,35 @@
+name: quenais
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  # Python
+  - python=3.11
+  - pip
+
+  # Build tools needed before pip installs anything
+  - clang
+  - cmake
+  - openblas
+  - gfortran
+
+  # Core scientific (conda versions more reliable than pip on HPC)
+  - numpy>=1.24
+  - scipy>=1.10
+  - matplotlib>=3.7
+  - h5py>=3.9
+  - networkx>=3.0
+
+  # Rust — required for qiskit-fermions compilation
+  # Install manually if not available:
+  #   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  - rust
+
+  - pip:
+    - pyscf>=2.4
+    - qiskit>=1.0
+    - qiskit-aer>=0.14
+    - qiskit-addon-sqd>=0.5
+    - openfermion>=1.6
+    - ffsim>=0.0.50
