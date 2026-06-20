@@ -1,76 +1,52 @@
-# step0_classical.py — Classical Reference Methods
 """
-Runs classical quantum chemistry methods on the molecule for comparative analysis.
-
-Methods (configurable via config.CLASSICAL_METHODS):
-  HF      — Restricted/Unrestricted Hartree-Fock
-  MP2     — 2nd order Møller-Plesset perturbation theory
-  CCSD    — Coupled-Cluster Singles and Doubles
-  CCSD_T  — CCSD with perturbative triples (gold standard for weakly correlated)
-  CASSCF  — Complete Active Space SCF (uses active space from Step 1 if available)
-  NEVPT2  — N-Electron Valence State Perturbation Theory on top of CASSCF
-             (more numerically stable than CASPT2, recommended for metals)
-
-All results saved to results/step0_classical.pkl and printed as a comparison table.
-
-Usage:
-  python step0_classical.py [--force]
-  Run before step3 to have classical references ready for visualization.
+Classical reference methods for QuEnAIS pipeline.
 """
 
 import os
-import sys
 import time
 import pickle
-import argparse
 import warnings
 import numpy as np
 
-import config
 
-# ── CLI ───────────────────────────────────────────────────────────────────────
-parser = argparse.ArgumentParser(description="Step 0: Classical Reference Methods")
-parser.add_argument("--force", action="store_true",
-                    help="Rerun even if cached result exists")
-args = parser.parse_args()
+def main(cfg, force=False):
+    """
+    Run classical quantum chemistry methods.
+    cfg   : quenais.config.Config
+    force : rerun even if cached result exists
+    """
+    from pyscf import gto, scf, mp, cc, mcscf
+    from pyscf.mrpt import nevpt2 as pyscf_nevpt2
 
-os.makedirs(config.RESULTS_DIR, exist_ok=True)
+    os.makedirs(cfg.results_dir, exist_ok=True)
 
-if os.path.exists(config.STEP0_FILE) and not args.force:
-    print(f"[Step 0] Using cached result: {config.STEP0_FILE}")
-    print(f"         Run with --force to recompute.")
-    sys.exit(0)
+    if os.path.exists(cfg.step0_file) and not force:
+        print(f"[Step 0] Using cached result: {cfg.step0_file}")
+        return
 
-from pyscf import gto, scf, mp, cc, mcscf
-from pyscf.mrpt import nevpt2 as pyscf_nevpt2
+    print(f"\n{'='*60}")
+    print(f"[Step 0] Classical Methods — {cfg.molecule}")
+    print(f"{'='*60}")
+    print(f"  Basis     : {cfg.basis}")
+    print(f"  Charge    : {cfg.charge}   Spin (2S): {cfg.spin}")
+    print(f"  Methods   : {cfg.classical_methods}")
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Build molecule
-# ═══════════════════════════════════════════════════════════════════════════════
-print(f"\n{'='*60}")
-print(f"[Step 0] Classical Methods — {config.MOLECULE}")
-print(f"{'='*60}")
-print(f"  Basis     : {config.BASIS}")
-print(f"  Charge    : {config.CHARGE}   Spin (2S): {config.SPIN}")
-print(f"  Methods   : {config.CLASSICAL_METHODS}")
+    mol = gto.M(
+        atom    = cfg.geometry,
+        basis   = cfg.basis,
+        charge  = cfg.charge,
+        spin    = cfg.spin,
+        verbose = 0,
+    )
+    print(f"  Electrons : {mol.nelectron}   AOs: {mol.nao_nr()}")
 
-mol = gto.M(
-    atom    = config.GEOMETRY,
-    basis   = config.BASIS,
-    charge  = config.CHARGE,
-    spin    = config.SPIN,
-    verbose = 0,
-)
-print(f"  Electrons : {mol.nelectron}   AOs: {mol.nao_nr()}")
-
-# Try to load Step 1 active space for CASSCF/NEVPT2
-step1 = None
-if os.path.exists(config.STEP1_FILE):
-    with open(config.STEP1_FILE, "rb") as f:
-        step1 = pickle.load(f)
-    print(f"  Step 1 loaded: ({step1['nel']}e, {step1['n_active_orbs']}orb) active space")
-else:
-    print(f"  Step 1 not found — CASSCF/NEVPT2 will use MP2 natural orbital guess")
+    step1 = None
+    if os.path.exists(cfg.step1_file):
+        with open(cfg.step1_file, "rb") as f:
+            step1 = pickle.load(f)
+        print(f"  Step 1 loaded: ({step1['nel']}e, {step1['n_active_orbs']}orb)")
+    else:
+        print(f"  Step 1 not found — CASSCF/NEVPT2 will use MP2 natural orbital guess")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -237,107 +213,96 @@ def _run_nevpt2(mc):
 # Main
 # ═══════════════════════════════════════════════════════════════════════════════
 
-results = {
-    "molecule"  : config.MOLECULE,
-    "basis"     : config.BASIS,
-    "methods"   : {},
-}
-
-t_total = time.time()
-
-# ── HF (always run — needed as base for everything else) ──────────────────────
-mf, e_hf = _run_hf(mol)
-results["methods"]["HF"] = {"energy": e_hf, "converged": mf.converged}
-
-# ── MP2 ───────────────────────────────────────────────────────────────────────
-mymp = None
-if "MP2" in config.CLASSICAL_METHODS:
-    e_mp2, e_corr_mp2, mymp = _run_mp2(mf)
-    results["methods"]["MP2"] = {
-        "energy"  : e_mp2,
-        "e_corr"  : e_corr_mp2,
-        "success" : e_mp2 is not None,
+    # ── Run methods ───────────────────────────────────────────────────────────
+    results = {
+        "molecule" : cfg.molecule,
+        "basis"    : cfg.basis,
+        "methods"  : {},
     }
 
-# ── CCSD ──────────────────────────────────────────────────────────────────────
-mycc = None
-if "CCSD" in config.CLASSICAL_METHODS:
-    e_ccsd, e_corr_cc, mycc = _run_ccsd(mf)
-    results["methods"]["CCSD"] = {
-        "energy"    : e_ccsd,
-        "e_corr"    : e_corr_cc,
-        "success"   : e_ccsd is not None,
-        "converged" : mycc.converged if mycc else False,
-    }
+    t_total = time.time()
 
-# ── CCSD(T) ───────────────────────────────────────────────────────────────────
-if "CCSD_T" in config.CLASSICAL_METHODS:
-    e_ccsdt, e_t = _run_ccsd_t(mf, mycc)
-    results["methods"]["CCSD_T"] = {
-        "energy"        : e_ccsdt,
-        "e_t_correction": e_t,
-        "success"       : e_ccsdt is not None,
-    }
+    mf, e_hf = _run_hf(mol)
+    results["methods"]["HF"] = {"energy": e_hf, "converged": mf.converged}
 
-# ── CASSCF ────────────────────────────────────────────────────────────────────
-mc = None
-if "CASSCF" in config.CLASSICAL_METHODS:
-    # Determine active space
-    if step1 is not None:
-        nel_cas  = step1["nel"]
-        norb_cas = step1["n_active_orbs"]
-        mo_guess = step1["mo_list"]   # MO indices from ASF
-        print(f"\n  Using Step 1 active space: ({nel_cas}e, {norb_cas}o)")
-    else:
-        # Fallback: small default active space based on molecule
-        nel_cas  = min(mol.nelectron, 10)
-        norb_cas = min(mol.nao_nr() // 2, 8)
-        mo_guess = None
-        print(f"\n  No Step 1 found. Using fallback: ({nel_cas}e, {norb_cas}o)")
+    mymp = None
+    if "MP2" in cfg.classical_methods:
+        e_mp2, e_corr_mp2, mymp = _run_mp2(mf)
+        results["methods"]["MP2"] = {
+            "energy" : e_mp2,
+            "e_corr" : e_corr_mp2,
+            "success": e_mp2 is not None,
+        }
 
-    e_casscf, mc = _run_casscf(mol, mf, nel_cas, norb_cas, mo_guess)
-    results["methods"]["CASSCF"] = {
-        "energy"  : e_casscf,
-        "nel"     : nel_cas,
-        "norb"    : norb_cas,
-        "success" : e_casscf is not None,
-        "converged": mc.converged if mc else False,
-    }
+    mycc = None
+    if "CCSD" in cfg.classical_methods:
+        e_ccsd, e_corr_cc, mycc = _run_ccsd(mf)
+        results["methods"]["CCSD"] = {
+            "energy"   : e_ccsd,
+            "e_corr"   : e_corr_cc,
+            "success"  : e_ccsd is not None,
+            "converged": mycc.converged if mycc else False,
+        }
 
-# ── NEVPT2 ────────────────────────────────────────────────────────────────────
-if "NEVPT2" in config.CLASSICAL_METHODS:
-    e_nevpt2 = _run_nevpt2(mc)
-    results["methods"]["NEVPT2"] = {
-        "energy"  : e_nevpt2,
-        "success" : e_nevpt2 is not None,
-    }
+    if "CCSD_T" in cfg.classical_methods:
+        e_ccsdt, e_t = _run_ccsd_t(mf, mycc)
+        results["methods"]["CCSD_T"] = {
+            "energy"        : e_ccsdt,
+            "e_t_correction": e_t,
+            "success"       : e_ccsdt is not None,
+        }
 
-results["total_time"] = time.time() - t_total
+    mc = None
+    if "CASSCF" in cfg.classical_methods:
+        if step1 is not None:
+            nel_cas  = step1["nel"]
+            norb_cas = step1["n_active_orbs"]
+            mo_guess = step1["mo_list"]
+        else:
+            nel_cas  = min(mol.nelectron, 10)
+            norb_cas = min(mol.nao_nr() // 2, 8)
+            mo_guess = None
+        e_casscf, mc = _run_casscf(mol, mf, nel_cas, norb_cas, mo_guess)
+        results["methods"]["CASSCF"] = {
+            "energy"   : e_casscf,
+            "nel"      : nel_cas,
+            "norb"     : norb_cas,
+            "success"  : e_casscf is not None,
+            "converged": mc.converged if mc else False,
+        }
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# Comparison Table
-# ═══════════════════════════════════════════════════════════════════════════════
-print(f"\n{'='*60}")
-print(f"[Step 0] Results — {config.MOLECULE} / {config.BASIS}")
-print(f"{'='*60}")
-print(f"\n  {'Method':<12} {'Energy (Ha)':>16} {'vs HF (Ha)':>14} "
-      f"{'vs HF (kcal/mol)':>18}")
-print(f"  {'─'*62}")
+    if "NEVPT2" in cfg.classical_methods:
+        e_nevpt2 = _run_nevpt2(mc)
+        results["methods"]["NEVPT2"] = {
+            "energy" : e_nevpt2,
+            "success": e_nevpt2 is not None,
+        }
 
-for method, data in results["methods"].items():
-    e = data.get("energy")
-    if e is None:
-        print(f"  {method:<12} {'FAILED':>16}")
-        continue
-    vs_hf     = e - e_hf
-    vs_hf_kc  = vs_hf * config.HARTREE_TO_KCAL_MOL
-    print(f"  {method:<12} {e:>16.8f} {vs_hf:>+14.6f} {vs_hf_kc:>+18.2f}")
+    results["total_time"] = time.time() - t_total
 
-print(f"\n  Total time: {results['total_time']:.1f}s")
-print(f"{'='*60}")
+    # ── Print table ───────────────────────────────────────────────────────────
+    print(f"\n{'='*60}")
+    print(f"[Step 0] Results — {cfg.molecule} / {cfg.basis}")
+    print(f"{'='*60}")
+    print(f"\n  {'Method':<12} {'Energy (Ha)':>16} {'vs HF (Ha)':>14} "
+          f"{'vs HF (kcal/mol)':>18}")
+    print(f"  {'─'*62}")
 
-# ── Save ──────────────────────────────────────────────────────────────────────
-with open(config.STEP0_FILE, "wb") as f:
-    pickle.dump(results, f)
+    for method, data in results["methods"].items():
+        e = data.get("energy")
+        if e is None:
+            print(f"  {method:<12} {'FAILED':>16}")
+            continue
+        vs_hf    = e - e_hf
+        vs_hf_kc = vs_hf * cfg.hartree_to_kcal_mol
+        print(f"  {method:<12} {e:>16.8f} {vs_hf:>+14.6f} {vs_hf_kc:>+18.2f}")
 
-print(f"\n[Step 0] ✓ Saved → {config.STEP0_FILE}")
+    print(f"\n  Total time: {results['total_time']:.1f}s")
+    print(f"{'='*60}")
+
+    # ── Save ──────────────────────────────────────────────────────────────────
+    with open(cfg.step0_file, "wb") as f:
+        pickle.dump(results, f)
+
+    print(f"\n[Step 0] ✓ Saved → {cfg.step0_file}")
+    return results
