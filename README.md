@@ -35,9 +35,13 @@ pip install block2
 ### 2. Or use the automated install script
 
 ```bash
-git clone https://github.com/AwadhootVijayLoharkar/quenais.git
-cd quenais
-bash install.sh
+## Installation
+
+    git clone https://github.com/AwadhootVijayLoharkar/quenais.git
+    cd quenais
+    mamba env create -f environment.yml -p ./quenais-env
+    mamba activate ./quenais-env
+    bash install.sh
 ```
 
 ### 3. Install quenais
