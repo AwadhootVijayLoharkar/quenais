@@ -223,16 +223,48 @@ def count_active_electrons(mol, mf, final_mo_list, cfg):
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
+def _validate_block2_wrapper(cfg):
+    """
+    Check that the block2 wrapper points to the current environment.
+    Warns if it points to a different env — a common mistake when
+    switching environments without regenerating the wrapper.
+    """
+    import sys
+    wrapper = cfg.blockexe_wrapper
+    if not os.path.exists(wrapper):
+        warnings.warn(
+            f"block2 wrapper not found: {wrapper}\n"
+            f"Run: bash install.sh  OR  python quenais/utils/regenerate_wrapper.py",
+            RuntimeWarning,
+        )
+        return
+
+    current_env = os.path.dirname(sys.executable)
+    with open(wrapper) as f:
+        content = f.read()
+
+    if current_env not in content and "block2main" in content:
+        warnings.warn(
+            f"block2 wrapper may point to wrong environment.\n"
+            f"  Current env : {current_env}\n"
+            f"  Wrapper     : {wrapper}\n"
+            f"  Fix: run bash install.sh to regenerate the wrapper\n"
+            f"  OR:  python -c \"from quenais.utils.cif_parser import *\" "
+            f"(see INSTALL.md)",
+            RuntimeWarning,
+        )
+
+
 def main(cfg, force=False):
     """
     Run Active Space Finder.
     cfg   : quenais.config.Config
     force : rerun even if cached result exists
     """
+    _validate_block2_wrapper(cfg)
     from pyscf import gto
     from pyscf.dmrgscf import dmrgci
     from asf.wrapper import find_from_scf
-
     os.makedirs(cfg.results_dir, exist_ok=True)
 
     if os.path.exists(cfg.step1_file) and not force:
@@ -407,3 +439,4 @@ def main(cfg, force=False):
 
     print(f"\n[Step 1] ✓ Saved → {cfg.step1_file}")
     return results
+
