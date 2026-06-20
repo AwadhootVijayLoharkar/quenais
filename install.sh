@@ -10,7 +10,10 @@ command -v python || { echo "ERROR: python not found"; exit 1; }
 command -v pip    || { echo "ERROR: pip not found"; exit 1; }
 command -v git    || { echo "ERROR: git not found"; exit 1; }
 command -v cargo  || { echo "ERROR: cargo not found. Install Rust: https://rustup.rs"; exit 1; }
-command -v clang  || { echo "ERROR: clang not found. apt install clang  OR  module load clang"; exit 1; }
+command -v clang  || { echo "ERROR: clang not found."; \
+                       echo "  Fix: mamba install -c conda-forge clang"; \
+                       echo "  OR:  conda install -c conda-forge clang"; \
+                       exit 1; }
 
 PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 echo "  Python $PYTHON_VERSION"
