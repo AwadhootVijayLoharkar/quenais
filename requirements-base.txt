@@ -4,6 +4,7 @@
 # Then install Python dependencies:
 # pip install -r requirements-base.txt
 jupyter
+ipykernel
 block2==0.5.2
 numpy>=1.24
 scipy>=1.10
