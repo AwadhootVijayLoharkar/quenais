@@ -193,7 +193,7 @@ def main(cfg, force=False, no_scan=False, no_quantum_scan=False):
 
         active_set   = set(final_mo_list)
         unique_atoms = list(set(atom_syms))
-        cmap         = plt.cm.get_cmap("tab10", len(unique_atoms))
+        cmap         = matplotlib.colormaps.get_cmap("tab10").resampled(len(unique_atoms))
         atom_color   = {sym: cmap(i) for i, sym in enumerate(unique_atoms)}
 
         fig, ax = plt.subplots(figsize=(max(10, len(show_orbs) * 0.5), 5))

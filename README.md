@@ -5,124 +5,100 @@ embedding (DMET) with quantum solvers (SQD/SKQD/SqDRIFT) for strongly
 correlated molecules.
 
 ## Pipeline Overview
-CIF file → Classical (HF/MP2) → Active Space Finder → DMET Embedding → Quantum Solver → Visualization Step 0 Step 1 Step 2 Step 3 Step 4
+
+| Step 0 | Step 1 | Step 2 | Step 3 | Step 4 |
+|---|---|---|---|---|
+| CIF file → Classical (HF/MP2) | Active Space Finder | DMET Embedding | Quantum Solver | Visualization |
+
+## Requirements
+
+- Python 3.10 or 3.11
+- Linux or macOS (see **Windows users** below)
+- A C/Fortran toolchain (clang, cmake, gfortran, openblas) and Rust — all provided by `environment.yml`
 
 ## Installation
 
-### 1. Install manual prerequisites first (see INSTALL.md)
+### Windows users — use WSL
+
+Do not install this package directly on native Windows. `block2==0.5.2`
+(a required dependency) only ships build wheels that conflict with pip —
+both the root Windows pip and the pip inside a mamba/conda virtual env
+created on Windows. There is no working native-Windows install path.
+
+Instead, install [WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+and run everything from an Ubuntu (or other Linux) WSL shell, then follow the
+steps below as if on native Linux.
+
+### 1. Clone the repo
 
 ```bash
-
-##### ASF (Active Space Finder)
-
-git clone https://github.com/HQSquantumsimulations/ActiveSpaceFinder.git
-cd ActiveSpaceFinder
-pip install .
-./init_dmrgscf_settings.sh
-
-##### qiskit-fermions (requires Rust + clang)
-
-git clone https://github.com/Qiskit/qiskit-fermions.git
-cd qiskit-fermions
-pip install --group build
-pip install --no-build-isolation .
-
-##### block2
-
-pip install block2
+git clone https://github.com/AwadhootVijayLoharkar/quenais.git
+cd quenais
 ```
 
-### 2. Or use the automated install script
+### 2. Create and activate the conda environment
 
 ```bash
-## Installation
-
-    git clone https://github.com/AwadhootVijayLoharkar/quenais.git
-    cd quenais
-    mamba env create -f environment.yml -p ./quenais-env
-    mamba activate ./quenais-env
-    bash install.sh
+mamba env create -f environment.yml -p ./quenais-env
+mamba activate ./quenais-env
 ```
 
-### 3. Install quenais
+Using `-p ./quenais-env` (a local path, not `--name`) avoids read-only
+errors on shared/HPC systems where the default conda envs directory isn't
+writable.
+
+### 3. Run the install script
+
+```bash
+bash install.sh
+```
+
+This installs everything in the required order: base packages, quantum
+packages, the `block2` wrapper (its paths depend on the current
+environment and can't be hardcoded), ASF, qiskit-fermions, and finally
+`quenais` itself via:
 
 ```bash
 pip install -e ".[quantum]"
 ```
 
-## Usage
+### 4. Verify
+
+```bash
+python -c "import quenais; print(quenais.__version__)"
+pytest tests/ -v
+```
+
+If you switch conda environments later, regenerate the block2 wrapper:
+
+```bash
+mamba activate ./your-new-env
+python quenais/utils/regenerate_wrapper.py
+```
+
+## Getting Started
+
+For the Python API, configuration options, and a full walkthrough of the
+pipeline, see [notebooks/tutorial.ipynb](notebooks/tutorial.ipynb).
 
 ### Command line
 
 ```bash
-
-### Run full pipeline
-
+# Run full pipeline
 quenais-run --molecule TiO2 --basis def2-svp
 
-### Run specific steps only
-
+# Run specific steps only
 quenais-run --molecule TiO2 --steps 0 1 2
 
-### Choose solver and ansatz
-
+# Choose solver and ansatz
 quenais-run --molecule TiO2 --solver sqd --ansatz lucj --mapping bk
 
-### Skip geometry scan
-
+# Skip geometry scan
 quenais-run --molecule TiO2 --no-scan
 
-### Force rerun ignoring cache
-
+# Force rerun ignoring cache
 quenais-run --molecule TiO2 --force
 ```
-
-### Python API
-
-```python
-from quenais.config import Config
-from quenais.classical.runner import main as run_classical
-from quenais.active_space.finder import main as run_asf
-from quenais.embedding.hamiltonian import main as run_hamiltonian
-from quenais.quantum.solver import main as run_solver
-from quenais.visualization.plots import main as run_viz
-
-### Configure
-
-cfg = Config(
-    molecule       = "TiO2",
-    basis          = "def2-svp",
-    quantum_solver = "sqd",
-    ansatz         = "lucj",
-    project_dir    = "/path/to/your/project",
-)
-cfg.validate()
-cfg.make_dirs()
-cfg.load_geometry()
-
-### Run pipeline
-
-run_classical(cfg)
-run_asf(cfg)
-run_hamiltonian(cfg)
-run_solver(cfg)
-run_viz(cfg)
-```
-
-## Configuration
-
-Key parameters in `Config`:
-
-| Parameter | Default | Description |
-|---|---|---|
-| molecule | "TiO2" | Molecule name (must match CIF file) |
-| basis | "def2-svp" | Basis set |
-| quantum_solver | "sqd" | Solver: sqd, skqd, sqdrift |
-| ansatz | "lucj" | Ansatz: lucj (recommended), su2 |
-| fermion_to_qubit | "bk" | Mapping: bk (recommended), jw |
-| backend | "mps" | Backend: mps, local, ibm |
-| n_shots | 8192 | Number of circuit shots |
-| sqd_iters | 10 | SQD iterations |
 
 ## Project Structure
 
@@ -144,19 +120,6 @@ your-project/
         ├── plot6_geometry_scan.png
         └── plot7_summary.png
 ```
-
-## Requirements
-
-- Python 3.10 or 3.11
-- PySCF >= 2.4
-- Qiskit >= 1.0
-- qiskit-aer >= 0.14
-- qiskit-addon-sqd >= 0.5
-- ffsim >= 0.0.50
-- openfermion >= 1.6
-- ASF (manual install)
-- qiskit-fermions (manual install, requires Rust)
-- block2 (manual install)
 
 ## Running Tests
 
