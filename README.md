@@ -62,11 +62,7 @@ bash install.sh
 This installs everything in the required order: base packages, quantum
 packages, the `block2` wrapper (its paths depend on the current
 environment and can't be hardcoded), ASF, qiskit-fermions, and finally
-`quenais` itself via:
-
-```bash
-pip install -e ".[quantum]"
-```
+`quenais` itself
 
 ### 4. Verify
 
