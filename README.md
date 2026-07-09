@@ -4,10 +4,14 @@ A Python package for quantum chemistry simulations combining classical
 embedding (DMET) with quantum solvers (SQD/SKQD/SqDRIFT) for strongly
 correlated molecules.
 
-This package was developed as part of Awadhoot Loharkar's Master's thesis
+This package was developed (still in active development) as part of Awadhoot Loharkar's Master's thesis
 at the Fraunhofer Institute for Industrial Mathematics (ITWM),
-and forms a small part of the larger QuEnAIS (Quantum Enhanced AI Drug
-Synthesizer) project.
+and forms a small part of the larger
+[QuEnAIS (Quantum Enhanced AI Drug Synthesizer)](https://www.quantensysteme.info/projektatlas/projekte/q/quenais)
+project, which combines generative AI with HPC and quantum computing to
+accelerate drug discovery. The project is funded under the Eureka call
+"Applied Quantum Technologies" and coordinated by Fraunhofer ITWM, with
+partners Cortex Discovery GmbH and QunaSys ApS.
 
 ## Pipeline Overview
 
