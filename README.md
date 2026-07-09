@@ -10,6 +10,12 @@ correlated molecules.
 |---|---|---|---|---|
 | CIF file → Classical (HF/MP2) | Active Space Finder | DMET Embedding | Quantum Solver | Visualization |
 
+> **Note:** Developers are currently working on adding a generative
+> quantum eigensolver for the SQD algorithm, as it significantly reduces
+> resource requirements. Because of this ongoing work, you may run into
+> issues when launching SQD. If you hit a problem you can't resolve,
+> please contact the developer at a.loharkar@edu.rptu.de.
+
 ## Requirements
 
 - Python 3.10 or 3.11
